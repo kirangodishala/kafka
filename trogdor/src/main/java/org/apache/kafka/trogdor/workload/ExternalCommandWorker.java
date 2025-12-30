@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -168,7 +169,22 @@ public class ExternalCommandWorker implements TaskWorker {
         if (spec.command().isEmpty()) {
             throw new RuntimeException("No command specified");
         }
-        ProcessBuilder bld = new ProcessBuilder(spec.command());
+        
+        // Validate command arguments to prevent command injection
+        List<String> command = spec.command();
+        for (String arg : command) {
+            if (arg == null || arg.trim().isEmpty()) {
+                throw new RuntimeException("Command contains null or empty arguments");
+            }
+            // Check for common command injection patterns
+            if (arg.contains(";") || arg.contains("&") || arg.contains("|") || 
+                arg.contains("$") || arg.contains("`") || arg.contains("$(") ||
+                arg.contains("&&") || arg.contains("||")) {
+                throw new RuntimeException("Command contains potentially unsafe characters: " + arg);
+            }
+        }
+        
+        ProcessBuilder bld = new ProcessBuilder(command);
         return bld.start();
     }
 
